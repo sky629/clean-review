@@ -1,0 +1,27 @@
+.DS_Store
+.idea/
+.vscode/
+
+# local env
+.env
+infra/docker-compose/.env
+infra/helm/clean-review/values-local.yaml
+infra/helm/clean-review/values-dev.yaml
+infra/helm/clean-review/values-prod.yaml
+
+# build outputs
+build/
+.gradle/
+node_modules/
+dist/
+coverage/
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+*.pyc
+
+# codex
+.omx
+.playwright-cli
+

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clean-review.local/schemas/review.analysis.completed.v1.schema.json",
+  "title": "ReviewAnalysisCompletedPayload",
+  "type": "object",
+  "required": ["target_id", "collection_run_id", "report_id", "trust_score", "viral_contamination_score"],
+  "properties": {
+    "target_id": { "type": "string" },
+    "collection_run_id": { "type": "string" },
+    "report_id": { "type": "string" },
+    "trust_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "viral_contamination_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "summary": { "type": "string" }
+  },
+  "additionalProperties": false
+}
+

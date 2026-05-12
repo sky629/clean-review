@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clean-review.local/schemas/notification.requested.v1.schema.json",
+  "title": "NotificationRequestedPayload",
+  "type": "object",
+  "required": ["notification_type", "target_id", "source_event_id", "message"],
+  "properties": {
+    "notification_type": { "type": "string" },
+    "target_id": { "type": "string" },
+    "source_event_id": { "type": "string" },
+    "message": { "type": "string" }
+  },
+  "additionalProperties": false
+}
+

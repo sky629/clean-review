@@ -1,0 +1,58 @@
+namespace: clean-review
+
+imagePullPolicy: IfNotPresent
+
+global:
+  config:
+    SPRING_PROFILES_ACTIVE: prod
+    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: clean_review
+    POSTGRES_URL: jdbc:postgresql://postgres:5432/clean_review
+    API_GATEWAY_PORT: "8080"
+    AUTH_SERVICE_PORT: "8080"
+    REVIEW_SERVICE_PORT: "8080"
+    NOTIFICATION_SERVICE_PORT: "8080"
+    AUTH_SERVICE_URI: http://auth-service:8080
+    REVIEW_SERVICE_URI: http://review-service:8080
+    NOTIFICATION_SERVICE_URI: http://notification-service:8080
+    FRONTEND_BASE_URL: https://clean-review.local
+    GEMINI_MODEL: gemini-2.5-flash
+    REVIEW_ANALYZER_MODE: crewai
+    KAFKA_TOPIC_REVIEW_COLLECTION_REQUESTED: review.collection.requested
+    KAFKA_TOPIC_REVIEW_ANALYSIS_COMPLETED: review.analysis.completed
+  secrets:
+    JWT_SECRET: change-me
+    GOOGLE_CLIENT_ID: change-me
+    GOOGLE_CLIENT_SECRET: change-me
+    POSTGRES_USER: clean_review
+    POSTGRES_PASSWORD: change-me
+    TELEGRAM_BOT_TOKEN: change-me
+    TELEGRAM_CHAT_ID: change-me
+    GEMINI_API_KEY: change-me
+
+services:
+  frontend:
+    image: clean-review/frontend:latest
+    port: 80
+  apiGateway:
+    image: clean-review/api-gateway:latest
+    port: 8080
+  authService:
+    image: clean-review/auth-service:latest
+    port: 8080
+  reviewService:
+    image: clean-review/review-service:latest
+    port: 8080
+  notificationService:
+    image: clean-review/notification-service:latest
+    port: 8080
+  reviewAnalysisWorker:
+    image: clean-review/review-analysis-worker:latest
+
+ingress:
+  enabled: true
+  host: clean-review.local

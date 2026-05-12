@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clean-review.local/schemas/review.collection.completed.v1.schema.json",
+  "title": "ReviewCollectionCompletedPayload",
+  "type": "object",
+  "required": ["collection_run_id", "target_id", "source", "collected_count"],
+  "properties": {
+    "collection_run_id": { "type": "string" },
+    "target_id": { "type": "string" },
+    "source": { "type": "string", "enum": ["NAVER_BLOG"] },
+    "collected_count": { "type": "integer", "minimum": 0 },
+    "deduplicated_count": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": false
+}
+

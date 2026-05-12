@@ -1,0 +1,47 @@
+{{- $root := . -}}
+{{- range $name, $svc := dict "frontend" .Values.services.frontend "auth-service" .Values.services.authService "review-service" .Values.services.reviewService "notification-service" .Values.services.notificationService }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ $root.Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: {{ $svc.image }}
+          imagePullPolicy: {{ $root.Values.imagePullPolicy }}
+          ports:
+            - containerPort: {{ $svc.port }}
+          envFrom:
+            - configMapRef:
+                name: clean-review-config
+            - secretRef:
+                name: clean-review-secret
+          readinessProbe:
+            httpGet:
+              path: {{ ternary "/" "/actuator/health" (eq $name "frontend") }}
+              port: {{ $svc.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $root.Values.namespace }}
+spec:
+  selector:
+    app: {{ $name }}
+  ports:
+    - port: {{ $svc.port }}
+      targetPort: {{ $svc.port }}
+{{- end }}
+

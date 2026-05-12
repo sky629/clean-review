@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clean-review-config
+  namespace: {{ .Values.namespace }}
+data:
+{{- range $key, $value := .Values.global.config }}
+  {{ $key }}: {{ $value | quote }}
+{{- end }}
+

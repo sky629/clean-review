@@ -1,0 +1,16 @@
+global:
+  config:
+    SPRING_PROFILES_ACTIVE: dev
+    FRONTEND_BASE_URL: https://dev.clean-review.example
+  secrets:
+    JWT_SECRET: replace-me
+    GOOGLE_CLIENT_ID: replace-me
+    GOOGLE_CLIENT_SECRET: replace-me
+    POSTGRES_PASSWORD: replace-me
+    TELEGRAM_BOT_TOKEN: replace-me
+    TELEGRAM_CHAT_ID: replace-me
+    GEMINI_API_KEY: replace-me
+
+ingress:
+  host: dev.clean-review.example
+

@@ -1,0 +1,39 @@
+server:
+  port: ${NOTIFICATION_SERVICE_PORT:8083}
+
+spring:
+  application:
+    name: notification-service
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/clean_review}
+    username: ${POSTGRES_USER:clean_review}
+    password: ${POSTGRES_PASSWORD:clean_review}
+  flyway:
+    enabled: true
+    table: flyway_schema_history_notification
+    baseline-on-migrate: true
+    baseline-version: 0
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${NOTIFICATION_KAFKA_GROUP_ID:notification-service}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.value.default.type: java.util.LinkedHashMap
+
+clean-review:
+  jwt:
+    secret: ${JWT_SECRET:change-me-change-me-change-me-change-me}
+  kafka:
+    topics:
+      review-analysis-completed: ${KAFKA_TOPIC_REVIEW_ANALYSIS_COMPLETED:review.analysis.completed}
+  telegram:
+    bot-token: ${TELEGRAM_BOT_TOKEN:}
+    chat-id: ${TELEGRAM_CHAT_ID:}

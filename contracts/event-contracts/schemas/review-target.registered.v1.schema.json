@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clean-review.local/schemas/review-target.registered.v1.schema.json",
+  "title": "ReviewTargetRegisteredPayload",
+  "type": "object",
+  "required": ["target_id", "target_type", "keyword", "created_by"],
+  "properties": {
+    "target_id": { "type": "string" },
+    "target_type": { "type": "string", "enum": ["PLACE", "PRODUCT"] },
+    "keyword": { "type": "string", "minLength": 1 },
+    "created_by": { "type": "string" }
+  },
+  "additionalProperties": false
+}

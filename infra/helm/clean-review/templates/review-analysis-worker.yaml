@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-analysis-worker
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: review-analysis-worker
+  template:
+    metadata:
+      labels:
+        app: review-analysis-worker
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: review-analysis-worker
+          image: {{ .Values.services.reviewAnalysisWorker.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: clean-review-config
+            - secretRef:
+                name: clean-review-secret
+

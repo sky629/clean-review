@@ -1,0 +1,16 @@
+server:
+  port: ${API_GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+
+clean-review:
+  jwt:
+    secret: ${JWT_SECRET:change-me-change-me-change-me-change-me}
+  cors:
+    allowed-origins: ${FRONTEND_ALLOWED_ORIGINS:http://localhost:5173}
+  routes:
+    auth-service-uri: ${AUTH_SERVICE_URI:http://localhost:8081}
+    review-service-uri: ${REVIEW_SERVICE_URI:http://localhost:8082}
+    notification-service-uri: ${NOTIFICATION_SERVICE_URI:http://localhost:8083}

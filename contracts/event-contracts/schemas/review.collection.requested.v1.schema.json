@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clean-review.local/schemas/review.collection.requested.v1.schema.json",
+  "title": "ReviewCollectionRequestedPayload",
+  "type": "object",
+  "required": ["collection_run_id", "target_id", "source", "keyword", "window_from", "window_to", "max_reviews", "run_reason"],
+  "properties": {
+    "collection_run_id": { "type": "string" },
+    "target_id": { "type": "string" },
+    "source": { "type": "string", "enum": ["NAVER_BLOG"] },
+    "keyword": { "type": "string", "minLength": 1 },
+    "requested_by": { "type": "string" },
+    "window_from": { "type": "string", "format": "date-time" },
+    "window_to": { "type": "string", "format": "date-time" },
+    "max_reviews": { "type": "integer", "minimum": 1 },
+    "run_reason": { "type": "string", "enum": ["INITIAL_BACKFILL", "MANUAL_RESYNC"] }
+  },
+  "additionalProperties": false
+}
