@@ -15,6 +15,12 @@ class RegisterReviewTargetUseCase(
 ) {
     @Transactional
     fun execute(command: RegisterReviewTargetCommand): ReviewTarget {
+        reviewTargetRepository.findActiveByCreatedByAndTypeAndKeyword(
+            userId = command.userId,
+            type = command.type,
+            keyword = command.keyword,
+        )?.let { return it }
+
         val target = reviewTargetRepository.save(
             ReviewTarget.create(
                 id = ReviewTargetId(UUID.randomUUID()),

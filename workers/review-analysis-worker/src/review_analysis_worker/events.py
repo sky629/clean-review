@@ -19,6 +19,7 @@ class EventEnvelope:
     schema_version: int = 1
     correlation_id: str | None = None
     idempotency_key: str | None = None
+    retry: dict[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> EventEnvelope:
@@ -40,6 +41,7 @@ class EventEnvelope:
             payload=payload,
             correlation_id=_optional_string(raw.get("correlation_id")),
             idempotency_key=_optional_string(raw.get("idempotency_key")),
+            retry=_optional_object(raw.get("retry")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -55,7 +57,17 @@ class EventEnvelope:
             result["correlation_id"] = self.correlation_id
         if self.idempotency_key is not None:
             result["idempotency_key"] = self.idempotency_key
+        if self.retry is not None:
+            result["retry"] = self.retry
         return result
+
+
+def _optional_object(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise EnvelopeValidationError("optional envelope object fields must be objects")
+    return value
 
 
 def _optional_string(value: Any) -> str | None:

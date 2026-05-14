@@ -83,6 +83,7 @@ data class AdminRetryJobResponse(
     val topic: String,
     val eventType: String,
     val originalEventId: String,
+    val consumerName: String,
     val attempt: Int,
     val maxAttempts: Int,
     val nextAttemptAt: String,
@@ -98,6 +99,7 @@ data class AdminRetryJobResponse(
                 topic = job.topic,
                 eventType = job.eventType,
                 originalEventId = job.originalEventId,
+                consumerName = job.consumerName,
                 attempt = job.attempt,
                 maxAttempts = job.maxAttempts,
                 nextAttemptAt = job.nextAttemptAt.toString(),
@@ -146,11 +148,18 @@ class AdminOperationsController(
     @GetMapping("/reviews")
     fun listReviews(): List<AdminReviewResponse> =
         reviewJpaRepository.findAllByOrderByCollectedAtDesc()
-            .map { review ->
-                AdminReviewResponse.from(
-                    review,
-                    reviewAnalysisJpaRepository.findFirstByReviewIdOrderByAnalyzedAtDesc(review.id),
-                )
+            .let { reviews ->
+                if (reviews.isEmpty()) {
+                    return@let emptyList()
+                }
+                val latestAnalysisByReviewId = reviewAnalysisJpaRepository
+                    .findAllByReviewIdIn(reviews.map { it.id })
+                    .groupBy { it.reviewId }
+                    .mapValues { (_, analyses) -> analyses.maxBy { it.analyzedAt } }
+
+                reviews.map { review ->
+                    AdminReviewResponse.from(review, latestAnalysisByReviewId[review.id])
+                }
             }
 
     @GetMapping("/analysis-runs")

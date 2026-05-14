@@ -16,9 +16,10 @@ class AnalysisCompletedKafkaListenerTest {
 
         listener.onMessage(
             mapOf(
-                "event_id" to "evt-1",
-                "event_type" to "review.analysis.completed.v1",
-                "aggregate_id" to targetId.toString(),
+                  "event_id" to "evt-1",
+                  "event_type" to "review.analysis.completed.v1",
+                  "idempotency_key" to "review-analysis-completed:run-1",
+                  "aggregate_id" to targetId.toString(),
                 "payload" to mapOf(
                     "target_id" to targetId.toString(),
                     "report_id" to reportId.toString(),
@@ -29,7 +30,7 @@ class AnalysisCompletedKafkaListenerTest {
             ),
         )
 
-        assertEquals("evt-1", useCase.commands.single().sourceEventId)
+        assertEquals("review-analysis-completed:run-1", useCase.commands.single().sourceEventId)
         assertEquals(targetId, useCase.commands.single().targetId)
         assertEquals(reportId, useCase.commands.single().reportId)
     }

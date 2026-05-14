@@ -22,6 +22,10 @@ global:
     FRONTEND_BASE_URL: https://clean-review.local
     GEMINI_MODEL: gemini-2.5-flash
     REVIEW_ANALYZER_MODE: crewai
+    WORKER_RETRY_MAX_ATTEMPTS: "3"
+    WORKER_RETRY_BASE_DELAY_SECONDS: "30"
+    WORKER_RETRY_MULTIPLIER: "2"
+    WORKER_RETRY_MAX_DELAY_SECONDS: "900"
     KAFKA_TOPIC_REVIEW_COLLECTION_REQUESTED: review.collection.requested
     KAFKA_TOPIC_REVIEW_ANALYSIS_COMPLETED: review.analysis.completed
   secrets:

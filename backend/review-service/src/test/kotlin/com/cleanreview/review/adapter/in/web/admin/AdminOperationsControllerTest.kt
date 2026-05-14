@@ -23,6 +23,7 @@ class AdminOperationsControllerTest {
             eventType = "ReviewCollectionRequested",
             originalEventId = "evt-1",
             idempotencyKey = "idempotency-1",
+            consumerName = "review-analysis-worker",
             correlationId = "correlation-1",
             attempt = 2,
             maxAttempts = 3,
@@ -38,5 +39,6 @@ class AdminOperationsControllerTest {
 
         assertEquals("CollectionBlocked", response.lastErrorCode)
         assertEquals("Google returned a blocked search page.", response.lastErrorMessage)
+        assertEquals("review-analysis-worker", response.consumerName)
     }
 }

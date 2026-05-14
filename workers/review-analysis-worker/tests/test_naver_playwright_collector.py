@@ -9,6 +9,7 @@ class FakePage:
         self.raw_result = raw_result
         self.goto_url = ""
         self.waited_for = ""
+        self.closed = False
 
     def goto(self, url: str, wait_until: str, timeout: int) -> None:
         self.goto_url = url
@@ -22,6 +23,9 @@ class FakePage:
     def evaluate(self, script: str):
         self.script = script
         return self.raw_result
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class FakeBrowser:
@@ -73,7 +77,7 @@ class FakeDiscovery:
         keyword: str,
         window_from=None,
         window_to=None,
-        max_results: int | None = None
+        max_results: int | None = None,
     ):
         self.calls.append(
             {
@@ -122,3 +126,4 @@ def test_naver_blog_playwright_collector_collects_real_search_results() -> None:
     assert reviews[0].canonical_url == "https://blog.naver.com/example/223"
     assert reviews[0].body == "웨이팅은 20분 정도였고 소스가 진해서 좋았습니다."
     assert review_page.script.count("querySelector") > 0
+    assert review_page.closed is True

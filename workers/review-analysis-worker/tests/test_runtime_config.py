@@ -11,6 +11,10 @@ def test_worker_settings_loads_defaults_for_local_runtime() -> None:
     assert settings.gemini_model == "gemini-2.5-flash"
     assert settings.analyzer_mode == "crewai"
     assert settings.collector_max_reviews_per_source == 100
+    assert settings.retry_max_attempts == 3
+    assert settings.retry_base_delay_seconds == 30
+    assert settings.retry_multiplier == 2
+    assert settings.retry_max_delay_seconds == 900
 
 
 def test_worker_settings_reads_env_overrides() -> None:
@@ -27,6 +31,10 @@ def test_worker_settings_reads_env_overrides() -> None:
             "NAVER_SEARCH_CLIENT_ID": "naver-id",
             "NAVER_SEARCH_CLIENT_SECRET": "naver-secret",
             "REVIEW_COLLECTOR_MAX_REVIEWS_PER_SOURCE": "50",
+            "WORKER_RETRY_MAX_ATTEMPTS": "5",
+            "WORKER_RETRY_BASE_DELAY_SECONDS": "10",
+            "WORKER_RETRY_MULTIPLIER": "3",
+            "WORKER_RETRY_MAX_DELAY_SECONDS": "600",
         }
     )
 
@@ -44,6 +52,10 @@ def test_worker_settings_reads_env_overrides() -> None:
     assert settings.naver_search_client_id == "naver-id"
     assert settings.naver_search_client_secret == "naver-secret"
     assert settings.collector_max_reviews_per_source == 50
+    assert settings.retry_max_attempts == 5
+    assert settings.retry_base_delay_seconds == 10
+    assert settings.retry_multiplier == 3
+    assert settings.retry_max_delay_seconds == 600
 
 
 def test_worker_settings_builds_postgres_dsn_from_standard_env_parts() -> None:

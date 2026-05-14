@@ -62,9 +62,12 @@ class NaverBlogPlaywrightCollector:
                     review_page = browser.new_page(
                         user_agent=DEFAULT_USER_AGENT, locale="ko-KR"
                     )
-                    review = self._extractor.extract(
-                        page=review_page, candidate=candidate
-                    )
+                    try:
+                        review = self._extractor.extract(
+                            page=review_page, candidate=candidate
+                        )
+                    finally:
+                        review_page.close()
                     if review is None:
                         continue
                     reviews.append(review)

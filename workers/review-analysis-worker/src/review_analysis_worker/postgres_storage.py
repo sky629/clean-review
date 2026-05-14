@@ -20,16 +20,20 @@ class PostgresReviewStorage:
     def __init__(self, connection: DbConnection) -> None:
         self._connection = connection
 
-    def mark_collection_running(self, collection_run_id: str) -> None:
-        self._connection.execute(
+    def mark_collection_running(self, collection_run_id: str) -> bool:
+        cursor = self._connection.execute(
             """
             update collection_runs
                set status = %s,
-                   started_at = now()
+                   started_at = now(),
+                   failure_code = null,
+                   failure_message = null
              where id = %s
+               and status in ('REQUESTED', 'FAILED')
             """,
             (CollectionRunStatus.RUNNING.value, collection_run_id),
         )
+        return getattr(cursor, "rowcount", 0) == 1
 
     def mark_collection_completed(self, collection_run_id: str) -> None:
         self._connection.execute(
@@ -110,6 +114,72 @@ class PostgresReviewStorage:
             ),
         )
         return review if getattr(cursor, "rowcount", 1) == 1 else None
+
+    def find_review_by_source_and_url_hash(
+        self, *, source: str, canonical_url_hash: str
+    ) -> StoredReview | None:
+        cursor = self._connection.execute(
+            """
+            select id,
+                   target_id,
+                   collection_run_id,
+                   source,
+                   source_review_id,
+                   canonical_url,
+                   canonical_url_hash,
+                   normalized_text_hash,
+                   author_hash,
+                   raw_text,
+                   coalesce(published_at::text, ''),
+                   status
+              from reviews
+             where source = %s
+               and canonical_url_hash = %s
+             limit 1
+            """,
+            (source, canonical_url_hash),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return StoredReview(
+            id=str(row[0]),
+            target_id=str(row[1]),
+            collection_run_id=str(row[2] or ""),
+            source=str(row[3]),
+            source_review_id=str(row[4] or ""),
+            canonical_url=str(row[5]),
+            canonical_url_hash=str(row[6]),
+            normalized_text_hash=str(row[7]),
+            author_hash=str(row[8] or ""),
+            raw_text=str(row[9]),
+            published_at=str(row[10] or ""),
+            status=str(row[11]),
+        )
+
+    def analysis_exists(
+        self,
+        *,
+        review_id: str,
+        analyzer_version: str,
+        model_provider: str,
+        model_name: str,
+        model_version: str,
+    ) -> bool:
+        cursor = self._connection.execute(
+            """
+            select 1
+              from review_analysis
+             where review_id = %s
+               and analyzer_version = %s
+               and model_provider = %s
+               and model_name = %s
+               and model_version = %s
+             limit 1
+            """,
+            (review_id, analyzer_version, model_provider, model_name, model_version),
+        )
+        return cursor.fetchone() is not None
 
     def save_analysis(self, analysis: StoredReviewAnalysis) -> StoredReviewAnalysis:
         self._connection.execute(
@@ -203,15 +273,8 @@ class PostgresReviewStorage:
                 %s,
                 now()
             )
-            on conflict (target_id, collection_run_id, analyzer_version, model_version)
-            do update set
-                viral_contamination_score = excluded.viral_contamination_score,
-                trust_score = excluded.trust_score,
-                summary = excluded.summary,
-                pros = excluded.pros,
-                cons = excluded.cons,
-                evidence_review_ids = excluded.evidence_review_ids,
-                report_hash = excluded.report_hash
+              on conflict (target_id, collection_run_id, analyzer_version, model_version)
+              do nothing
             """,
             (
                 report.id,

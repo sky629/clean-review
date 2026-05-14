@@ -86,6 +86,18 @@ private class ReviewListInMemoryTargetRepository(
     override fun findAllByCreatedBy(userId: UUID): List<ReviewTarget> =
         targets.values.filter { it.createdBy == userId }
 
+    override fun findActiveByCreatedByAndTypeAndKeyword(
+        userId: UUID,
+        type: com.cleanreview.review.domain.model.ReviewTargetType,
+        keyword: String,
+    ): ReviewTarget? =
+        targets.values.firstOrNull {
+            it.createdBy == userId &&
+                it.type == type &&
+                it.keyword.trim().equals(keyword.trim(), ignoreCase = true) &&
+                !it.isDeleted()
+        }
+
     override fun findAll(): List<ReviewTarget> = targets.values.toList()
 }
 

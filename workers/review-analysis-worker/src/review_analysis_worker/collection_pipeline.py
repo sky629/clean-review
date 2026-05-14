@@ -108,8 +108,24 @@ class FirstImageOcr(Protocol):
 
 
 class ReviewStorage(Protocol):
-    def mark_collection_running(self, collection_run_id: str) -> None:
-        """Mark a collection run as running."""
+    def mark_collection_running(self, collection_run_id: str) -> bool:
+        """Mark a collection run as running when it is processable."""
+
+    def find_review_by_source_and_url_hash(
+        self, *, source: str, canonical_url_hash: str
+    ) -> StoredReview | None:
+        """Find an already stored review by its source URL hash."""
+
+    def analysis_exists(
+        self,
+        *,
+        review_id: str,
+        analyzer_version: str,
+        model_provider: str,
+        model_name: str,
+        model_version: str,
+    ) -> bool:
+        """Return true when this review/model pair has already been analyzed."""
 
     def save_review(self, review: StoredReview) -> StoredReview | None:
         """Save a collected review idempotently."""
@@ -150,7 +166,7 @@ class CollectionPipeline:
     def collector_name(self) -> str:
         return type(self._collector).__name__
 
-    def handle(self, event: EventEnvelope) -> dict[str, Any]:
+    def handle(self, event: EventEnvelope) -> dict[str, Any] | None:
         if event.event_type != "review.collection.requested.v1":
             raise UnsupportedCollectionEvent(event.event_type)
 
@@ -164,7 +180,8 @@ class CollectionPipeline:
         max_reviews = int(payload.get("max_reviews") or 20)
         model_name = getattr(self._analyzer, "model", "gemini-2.5-flash")
 
-        self._storage.mark_collection_running(collection_run_id)
+        if not self._storage.mark_collection_running(collection_run_id):
+            return None
         try:
             reviews = self._collector.collect(
                 source=source,
@@ -178,17 +195,40 @@ class CollectionPipeline:
             analyses: list[StoredReviewAnalysis] = []
 
             for raw_review in reviews:
-                raw_review = _with_first_image_ocr(raw_review, self._first_image_ocr)
-                stored_review = self._storage.save_review(
-                    _to_stored_review(
-                        raw_review,
-                        target_id=target_id,
-                        collection_run_id=collection_run_id,
-                        source=source,
-                    )
+                candidate_review = _to_stored_review(
+                    raw_review,
+                    target_id=target_id,
+                    collection_run_id=collection_run_id,
+                    source=source,
                 )
-                if stored_review is None:
-                    continue
+                existing_review = self._storage.find_review_by_source_and_url_hash(
+                    source=source,
+                    canonical_url_hash=candidate_review.canonical_url_hash,
+                )
+                if existing_review is not None:
+                    if self._storage.analysis_exists(
+                        review_id=existing_review.id,
+                        analyzer_version=ANALYZER_VERSION,
+                        model_provider=MODEL_PROVIDER,
+                        model_name=model_name,
+                        model_version=model_name,
+                    ):
+                        continue
+                    stored_review = existing_review
+                else:
+                    raw_review = _with_first_image_ocr(
+                        raw_review, self._first_image_ocr
+                    )
+                    stored_review = self._storage.save_review(
+                        _to_stored_review(
+                            raw_review,
+                            target_id=target_id,
+                            collection_run_id=collection_run_id,
+                            source=source,
+                        )
+                    )
+                    if stored_review is None:
+                        continue
                 stored_reviews.append(stored_review)
 
                 analysis_result = self._analyzer.analyze(
@@ -208,6 +248,10 @@ class CollectionPipeline:
                         )
                     )
                 )
+
+            if reviews and not stored_reviews:
+                self._storage.mark_collection_completed(collection_run_id)
+                return None
 
             report = self._storage.save_report(
                 _build_report(
@@ -421,7 +465,9 @@ def _completion_event(
     collection_run_id: str,
     report: StoredReviewReport,
 ) -> dict[str, Any]:
-    event_id = str(uuid.uuid4())
+    event_id = str(
+        uuid.uuid5(uuid.NAMESPACE_URL, f"review-analysis-completed:{collection_run_id}")
+    )
     return {
         "event_id": event_id,
         "event_type": "review.analysis.completed.v1",

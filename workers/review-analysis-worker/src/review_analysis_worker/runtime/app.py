@@ -14,7 +14,9 @@ from review_analysis_worker.collectors.search_discovery import (
     NaverBlogApiSearchDiscovery,
     NaverBlogSearchApiClient,
 )
+from review_analysis_worker.postgres_retry import PostgresRetryStore
 from review_analysis_worker.postgres_storage import PostgresReviewStorage
+from review_analysis_worker.retry import RetryPolicy
 from review_analysis_worker.runtime.config import WorkerSettings
 from review_analysis_worker.runtime.first_image_ocr import GeminiFirstImageOcr
 from review_analysis_worker.runtime.gemini import GoogleGenaiGeminiClient
@@ -78,6 +80,7 @@ def _build_collector(settings: WorkerSettings):
 
 def build_worker(settings: WorkerSettings) -> ReviewAnalysisWorker:
     pipeline = build_pipeline(settings=settings)
+    retry_connection = connect_postgres(settings.postgres_dsn)
     return ReviewAnalysisWorker(
         consumer=JsonKafkaConsumer(
             create_confluent_consumer(
@@ -94,4 +97,14 @@ def build_worker(settings: WorkerSettings) -> ReviewAnalysisWorker:
         ),
         output_topic=settings.output_topic,
         handler=pipeline.handle,
+        retry_store=PostgresRetryStore(
+            retry_connection,
+            consumer_name=settings.consumer_group_id,
+        ),
+        retry_policy=RetryPolicy(
+            max_attempts=settings.retry_max_attempts,
+            base_delay_seconds=settings.retry_base_delay_seconds,
+            multiplier=settings.retry_multiplier,
+            max_delay_seconds=settings.retry_max_delay_seconds,
+        ),
     )

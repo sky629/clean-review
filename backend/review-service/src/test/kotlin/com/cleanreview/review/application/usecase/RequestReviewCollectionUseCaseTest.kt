@@ -1,6 +1,5 @@
 package com.cleanreview.review.application.usecase
 
-import com.cleanreview.review.application.port.out.ReviewCollectionEventPublisher
 import com.cleanreview.review.application.port.out.ReviewCollectionRequestedEvent
 import com.cleanreview.review.domain.model.CollectionRun
 import com.cleanreview.review.domain.model.CollectionRunId
@@ -18,6 +17,7 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import org.junit.jupiter.api.Test
+import org.springframework.context.ApplicationEventPublisher
 
 class RequestReviewCollectionUseCaseTest {
     private val clock = Clock.fixed(Instant.parse("2026-05-11T14:00:00Z"), ZoneOffset.UTC)
@@ -122,13 +122,13 @@ class RequestReviewCollectionUseCaseTest {
     private fun useCase(
         targetRepository: ReviewTargetRepository,
         collectionRunRepository: CollectionRunRepository,
-        eventPublisher: ReviewCollectionEventPublisher,
+        eventPublisher: ApplicationEventPublisher,
         testClock: Clock = clock,
     ): RequestReviewCollectionUseCase =
         RequestReviewCollectionUseCase(
             reviewTargetRepository = targetRepository,
             collectionRunRepository = collectionRunRepository,
-            reviewCollectionEventPublisher = eventPublisher,
+              applicationEventPublisher = eventPublisher,
             clock = testClock,
             initialBackfillDays = 30,
             resyncOverlapHours = 1,
@@ -169,6 +169,18 @@ private class RequestInMemoryReviewTargetRepository(
     override fun findAllByCreatedBy(userId: UUID): List<ReviewTarget> =
         targets.values.filter { it.createdBy == userId && !it.isDeleted() }
 
+    override fun findActiveByCreatedByAndTypeAndKeyword(
+        userId: UUID,
+        type: com.cleanreview.review.domain.model.ReviewTargetType,
+        keyword: String,
+    ): ReviewTarget? =
+        targets.values.firstOrNull {
+            it.createdBy == userId &&
+                it.type == type &&
+                it.keyword.trim().equals(keyword.trim(), ignoreCase = true) &&
+                !it.isDeleted()
+        }
+
     override fun findAll(): List<ReviewTarget> =
         targets.values.filter { !it.isDeleted() }
 }
@@ -206,10 +218,10 @@ private class RequestInMemoryCollectionRunRepository : CollectionRunRepository {
             .maxByOrNull { it.requestedAt }
 }
 
-private class RequestRecordingReviewCollectionEventPublisher : ReviewCollectionEventPublisher {
+private class RequestRecordingReviewCollectionEventPublisher : ApplicationEventPublisher {
     val published = mutableListOf<ReviewCollectionRequestedEvent>()
 
-    override fun publish(event: ReviewCollectionRequestedEvent) {
-        published.add(event)
+    override fun publishEvent(event: Any) {
+        published.add(event as ReviewCollectionRequestedEvent)
     }
 }

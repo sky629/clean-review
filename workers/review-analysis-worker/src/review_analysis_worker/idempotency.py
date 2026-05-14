@@ -83,9 +83,7 @@ class IdempotencyProcessor:
 
         try:
             detail = handler(envelope)
-        except (
-            Exception
-        ) as exc:  # noqa: BLE001 - failures are represented for retry routing.
+        except Exception as exc:  # noqa: BLE001 - failures are represented for retry routing.
             self._store.mark_failed(key)
             return ProcessingResult(status=ProcessingStatus.FAILED, detail=exc)
 

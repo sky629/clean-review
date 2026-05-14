@@ -3,6 +3,7 @@ package com.cleanreview.review.adapter.out.persistence
 import com.cleanreview.review.domain.model.ReviewTarget
 import com.cleanreview.review.domain.model.ReviewTargetId
 import com.cleanreview.review.domain.model.ReviewTargetStatus
+import com.cleanreview.review.domain.model.ReviewTargetType
 import com.cleanreview.review.domain.repository.ReviewTargetRepository
 import java.util.UUID
 import org.springframework.stereotype.Repository
@@ -21,6 +22,20 @@ class ReviewTargetPersistenceAdapter(
         reviewTargetJpaRepository
             .findAllByCreatedByAndStatusNot(userId, ReviewTargetStatus.DELETED)
             .map { it.toDomain() }
+
+    override fun findActiveByCreatedByAndTypeAndKeyword(
+        userId: UUID,
+        type: ReviewTargetType,
+        keyword: String,
+    ): ReviewTarget? =
+        reviewTargetJpaRepository
+            .findActiveByCreatedByAndTypeAndNormalizedKeyword(
+                userId,
+                type,
+                keyword,
+                ReviewTargetStatus.DELETED,
+            )
+            ?.toDomain()
 
     override fun findAll(): List<ReviewTarget> =
         reviewTargetJpaRepository.findAllByStatusNot(ReviewTargetStatus.DELETED).map { it.toDomain() }

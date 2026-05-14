@@ -1,8 +1,8 @@
 from review_analysis_worker.events import EventEnvelope
 from review_analysis_worker.idempotency import (
     DuplicateEvent,
-    InMemoryIdempotencyStore,
     IdempotencyProcessor,
+    InMemoryIdempotencyStore,
     ProcessingStatus,
     default_idempotency_key,
 )

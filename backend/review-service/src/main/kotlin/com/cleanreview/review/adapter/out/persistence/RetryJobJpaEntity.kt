@@ -28,6 +28,9 @@ class RetryJobJpaEntity(
     @Column(name = "idempotency_key", nullable = false)
     val idempotencyKey: String = "",
 
+    @Column(name = "consumer_name", nullable = false)
+    val consumerName: String = "",
+
     @Column(name = "correlation_id", nullable = false)
     val correlationId: String = "",
 

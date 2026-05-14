@@ -22,7 +22,7 @@ class AnalysisCompletedKafkaListener(
         val payload = envelope["payload"] as? Map<*, *> ?: error("payload is required")
         handleAnalysisCompletedNotificationUseCase.execute(
             AnalysisCompletedNotificationCommand(
-                sourceEventId = requireString(envelope, "event_id"),
+                sourceEventId = requireString(envelope, "idempotency_key"),
                 targetId = UUID.fromString(requireString(payload, "target_id")),
                 reportId = UUID.fromString(requireString(payload, "report_id")),
                 trustScore = requireNumber(payload, "trust_score"),

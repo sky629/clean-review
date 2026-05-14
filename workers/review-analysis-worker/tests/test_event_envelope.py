@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from review_analysis_worker.events import EventEnvelope, EnvelopeValidationError
+from review_analysis_worker.events import EnvelopeValidationError, EventEnvelope
 
 
 def test_event_envelope_round_trips_dict_and_iso_timestamp() -> None:
@@ -16,10 +16,12 @@ def test_event_envelope_round_trips_dict_and_iso_timestamp() -> None:
             "payload": {"review_id": "r-1"},
             "correlation_id": "corr-1",
             "idempotency_key": "idem-1",
+            "retry": {"original_event_id": "evt-original", "attempt": 1},
         }
     )
 
     assert envelope.occurred_at == datetime(2026, 5, 7, 3, 15, tzinfo=UTC)
+    assert envelope.retry == {"original_event_id": "evt-original", "attempt": 1}
     assert envelope.to_dict() == {
         "event_id": "evt-1",
         "event_type": "review.scraped",
@@ -29,6 +31,7 @@ def test_event_envelope_round_trips_dict_and_iso_timestamp() -> None:
         "payload": {"review_id": "r-1"},
         "correlation_id": "corr-1",
         "idempotency_key": "idem-1",
+        "retry": {"original_event_id": "evt-original", "attempt": 1},
     }
 
 

@@ -22,7 +22,7 @@ class ReviewCollectionKafkaPublisher(
             "schema_version" to 1,
             "occurred_at" to Instant.now().toString(),
             "correlation_id" to eventId,
-            "idempotency_key" to "review-collection-request:${event.targetId}",
+            "idempotency_key" to event.idempotencyKey,
             "aggregate_id" to event.targetId,
             "payload" to mapOf(
                 "collection_run_id" to event.collectionRunId,

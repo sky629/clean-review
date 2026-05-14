@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from typing import Mapping
 
 
@@ -19,6 +19,10 @@ class WorkerSettings:
     naver_search_client_id: str
     naver_search_client_secret: str
     collector_max_reviews_per_source: int
+    retry_max_attempts: int
+    retry_base_delay_seconds: int
+    retry_multiplier: int
+    retry_max_delay_seconds: int
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> WorkerSettings:
@@ -49,6 +53,14 @@ class WorkerSettings:
             naver_search_client_secret=values.get("NAVER_SEARCH_CLIENT_SECRET", ""),
             collector_max_reviews_per_source=int(
                 values.get("REVIEW_COLLECTOR_MAX_REVIEWS_PER_SOURCE", "100")
+            ),
+            retry_max_attempts=int(values.get("WORKER_RETRY_MAX_ATTEMPTS", "3")),
+            retry_base_delay_seconds=int(
+                values.get("WORKER_RETRY_BASE_DELAY_SECONDS", "30")
+            ),
+            retry_multiplier=int(values.get("WORKER_RETRY_MULTIPLIER", "2")),
+            retry_max_delay_seconds=int(
+                values.get("WORKER_RETRY_MAX_DELAY_SECONDS", "900")
             ),
         )
 

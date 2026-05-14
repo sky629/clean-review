@@ -11,25 +11,26 @@ class FakeConnection:
     def __init__(self) -> None:
         self.calls: list[tuple[str, tuple]] = []
         self.rowcount = 1
+        self.fetchone_result = None
 
     def execute(self, sql: str, params: tuple = ()):
         self.calls.append((" ".join(sql.split()), params))
         return self
 
     def fetchone(self):
-        return None
+        return self.fetchone_result
 
 
 def test_postgres_storage_updates_collection_status() -> None:
     connection = FakeConnection()
     storage = PostgresReviewStorage(connection)
 
-    storage.mark_collection_running("run-1")
+    assert storage.mark_collection_running("run-1") is True
     storage.mark_collection_completed("run-1")
     storage.mark_collection_failed("run-1", "CollectionBlocked", "captcha")
 
     assert (
-        "update collection_runs set status = %s, started_at = now()"
+        "update collection_runs set status = %s, started_at = now(), failure_code = null, failure_message = null"
         in connection.calls[0][0]
     )
     assert connection.calls[0][1] == (CollectionRunStatus.RUNNING.value, "run-1")
@@ -117,6 +118,7 @@ def test_postgres_storage_upserts_review_analysis_and_report() -> None:
         "on conflict (target_id, collection_run_id, analyzer_version, model_version)"
         in executed
     )
+    assert "do nothing" in executed
 
 
 def test_postgres_storage_returns_none_for_duplicate_review() -> None:
@@ -139,3 +141,49 @@ def test_postgres_storage_returns_none_for_duplicate_review() -> None:
 
     assert storage.save_review(review) is None
     assert "do nothing" in connection.calls[0][0]
+
+
+def test_postgres_storage_loads_existing_review_by_source_and_url_hash() -> None:
+    connection = FakeConnection()
+    connection.fetchone_result = (
+        "review-1",
+        "target-1",
+        "run-1",
+        "NAVER_BLOG",
+        "naver-101",
+        "https://blog.naver.com/reviews/naver-101",
+        "url-hash",
+        "text-hash",
+        "author-hash",
+        "raw text",
+        "2026-05-06 00:00:00+00",
+        "COLLECTED",
+    )
+    storage = PostgresReviewStorage(connection)
+
+    review = storage.find_review_by_source_and_url_hash(
+        source="NAVER_BLOG", canonical_url_hash="url-hash"
+    )
+    assert review is not None
+    assert review.id == "review-1"
+    assert review.raw_text == "raw text"
+    assert "from reviews" in connection.calls[0][0]
+    assert connection.calls[0][1] == ("NAVER_BLOG", "url-hash")
+
+
+def test_postgres_storage_checks_existing_analysis() -> None:
+    connection = FakeConnection()
+    connection.fetchone_result = (1,)
+    storage = PostgresReviewStorage(connection)
+
+    assert (
+        storage.analysis_exists(
+            review_id="review-1",
+            analyzer_version="analyzer",
+            model_provider="google",
+            model_name="gemini-2.5-flash",
+            model_version="gemini-2.5-flash",
+        )
+        is True
+    )
+    assert "from review_analysis" in connection.calls[0][0]

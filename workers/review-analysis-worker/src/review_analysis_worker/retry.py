@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 
 from review_analysis_worker.events import EventEnvelope
@@ -35,6 +36,24 @@ class RetryPolicy:
             delay_seconds=min(delay, self.max_delay_seconds),
             reason=reason,
         )
+
+
+class RetryJobStatus(Enum):
+    PENDING = "PENDING"
+    REPUBLISHED = "REPUBLISHED"
+    DEAD_LETTERED = "DEAD_LETTERED"
+
+
+@dataclass(frozen=True, slots=True)
+class RetryJob:
+    id: str
+    topic: str
+    original_event_id: str
+    idempotency_key: str
+    correlation_id: str
+    payload: dict[str, Any]
+    attempt: int
+    max_attempts: int
 
 
 @dataclass(frozen=True, slots=True)

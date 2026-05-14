@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
 import json
-from zoneinfo import ZoneInfo
+from datetime import datetime
 from typing import Any, Protocol
+from zoneinfo import ZoneInfo
 
 from review_analysis_worker.analyzers.gemini import (
     DEFAULT_GEMINI_MODEL,
@@ -88,7 +88,7 @@ class CrewAIReviewCrewRunner:
 
     def run(self, *, review_id: str, body: str, rating: int | None) -> dict[str, Any]:
         try:
-            from crewai import Agent, Crew, LLM, Process, Task
+            from crewai import LLM, Agent, Crew, Process, Task
         except ImportError as exc:
             raise CrewAIRuntimeDependencyError(
                 "crewai is required to run the multi-agent review analyzer."

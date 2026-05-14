@@ -171,6 +171,7 @@ services:
 
   review-analysis-worker:
     profiles: ["worker"]
+    restart: unless-stopped
     build:
       context: ../../workers/review-analysis-worker
     environment:
@@ -185,6 +186,10 @@ services:
       NAVER_SEARCH_CLIENT_ID: ${NAVER_SEARCH_CLIENT_ID}
       NAVER_SEARCH_CLIENT_SECRET: ${NAVER_SEARCH_CLIENT_SECRET}
       REVIEW_COLLECTOR_MAX_REVIEWS_PER_SOURCE: ${REVIEW_COLLECTOR_MAX_REVIEWS_PER_SOURCE:-100}
+      WORKER_RETRY_MAX_ATTEMPTS: ${WORKER_RETRY_MAX_ATTEMPTS:-3}
+      WORKER_RETRY_BASE_DELAY_SECONDS: ${WORKER_RETRY_BASE_DELAY_SECONDS:-30}
+      WORKER_RETRY_MULTIPLIER: ${WORKER_RETRY_MULTIPLIER:-2}
+      WORKER_RETRY_MAX_DELAY_SECONDS: ${WORKER_RETRY_MAX_DELAY_SECONDS:-900}
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,14 +1,16 @@
+import pytest
+
+from review_analysis_worker.analyzers.gemini import ReviewAnalysisResult
 from review_analysis_worker.collection_pipeline import (
     CollectionPipeline,
     CollectionRunStatus,
+    StoredReview,
     StoredReviewAnalysis,
     StoredReviewReport,
 )
-from review_analysis_worker.analyzers.gemini import ReviewAnalysisResult
 from review_analysis_worker.collectors.collected_review import CollectedReview
 from review_analysis_worker.collectors.errors import CollectionBlocked
 from review_analysis_worker.events import EventEnvelope
-import pytest
 
 
 class FakeCollector:
@@ -184,10 +186,19 @@ class FakeStorage:
         self.analyses: list[StoredReviewAnalysis] = []
         self.reports: list[StoredReviewReport] = []
 
-    def mark_collection_running(self, collection_run_id: str) -> None:
+    def mark_collection_running(self, collection_run_id: str) -> bool:
         self.collection_statuses.append(
             (collection_run_id, CollectionRunStatus.RUNNING)
         )
+        return True
+
+    def find_review_by_source_and_url_hash(
+        self, *, source: str, canonical_url_hash: str
+    ):
+        return None
+
+    def analysis_exists(self, **kwargs) -> bool:
+        return False
 
     def save_review(self, review):
         self.reviews.append(review)
@@ -319,9 +330,41 @@ def test_collection_pipeline_appends_first_image_ocr_before_analysis() -> None:
 
 
 class DuplicateSkippingStorage(FakeStorage):
+    def __init__(self) -> None:
+        super().__init__()
+        self.existing_review = StoredReview(
+            id="existing-review-1",
+            target_id="target-1",
+            collection_run_id="previous-run",
+            source="NAVER_BLOG",
+            source_review_id="naver-101",
+            canonical_url="https://blog.naver.com/reviews/naver-101",
+            canonical_url_hash="existing-url-hash",
+            normalized_text_hash="existing-text-hash",
+            author_hash="existing-author-hash",
+            raw_text="이미 수집된 리뷰입니다.",
+            published_at="2026-05-06",
+        )
+
+    def find_review_by_source_and_url_hash(
+        self, *, source: str, canonical_url_hash: str
+    ):
+        return self.existing_review
+
+    def analysis_exists(self, **kwargs) -> bool:
+        return True
+
     def save_review(self, review):
         self.reviews.append(review)
         return None
+
+
+class CompletedRunStorage(FakeStorage):
+    def mark_collection_running(self, collection_run_id: str) -> bool:
+        self.collection_statuses.append(
+            (collection_run_id, CollectionRunStatus.COMPLETED)
+        )
+        return False
 
 
 def test_collection_pipeline_skips_analysis_for_duplicate_reviews() -> None:
@@ -355,9 +398,73 @@ def test_collection_pipeline_skips_analysis_for_duplicate_reviews() -> None:
 
     pipeline.handle(event)
 
-    assert len(storage.reviews) == 1
+    assert storage.reviews == []
     assert storage.analyses == []
-    assert storage.reports[0].evidence_review_ids == []
+    assert storage.reports == []
+    assert storage.collection_statuses[-1] == ("run-1", CollectionRunStatus.COMPLETED)
+
+
+def test_collection_pipeline_skips_first_image_ocr_for_duplicate_reviews() -> None:
+    storage = DuplicateSkippingStorage()
+    ocr = FakeFirstImageOcr()
+    pipeline = CollectionPipeline(
+        collector=FirstImageCollector(),
+        analyzer=NeutralAnalyzer(),
+        storage=storage,
+        first_image_ocr=ocr,
+    )
+    event = EventEnvelope.from_dict(
+        {
+            "event_id": "evt-1",
+            "event_type": "review.collection.requested.v1",
+            "schema_version": 1,
+            "occurred_at": "2026-05-07T03:15:00Z",
+            "correlation_id": "corr-1",
+            "idempotency_key": "review-collection-request:target-1",
+            "aggregate_id": "target-1",
+            "payload": {
+                "collection_run_id": "run-1",
+                "target_id": "target-1",
+                "source": "NAVER_BLOG",
+                "keyword": "성수동 파스타 맛집",
+            },
+        }
+    )
+
+    assert pipeline.handle(event) is None
+    assert ocr.calls == []
+    assert storage.analyses == []
+
+
+def test_collection_pipeline_noops_when_collection_run_is_already_completed() -> None:
+    storage = CompletedRunStorage()
+    pipeline = CollectionPipeline(
+        collector=FakeCollector(),
+        analyzer=FakeAnalyzer(),
+        storage=storage,
+    )
+    event = EventEnvelope.from_dict(
+        {
+            "event_id": "evt-1",
+            "event_type": "review.collection.requested.v1",
+            "schema_version": 1,
+            "occurred_at": "2026-05-07T03:15:00Z",
+            "correlation_id": "corr-1",
+            "idempotency_key": "review-collection-request:target-1",
+            "aggregate_id": "target-1",
+            "payload": {
+                "collection_run_id": "run-1",
+                "target_id": "target-1",
+                "source": "NAVER_BLOG",
+                "keyword": "성수동 파스타 맛집",
+            },
+        }
+    )
+
+    assert pipeline.handle(event) is None
+    assert storage.reviews == []
+    assert storage.analyses == []
+    assert storage.reports == []
 
 
 def test_collection_pipeline_handles_naver_blog_source() -> None:

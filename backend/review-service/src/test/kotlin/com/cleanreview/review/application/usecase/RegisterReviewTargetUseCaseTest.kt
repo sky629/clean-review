@@ -1,7 +1,6 @@
 package com.cleanreview.review.application.usecase
 
 import com.cleanreview.review.application.command.RegisterReviewTargetCommand
-import com.cleanreview.review.application.port.out.ReviewCollectionEventPublisher
 import com.cleanreview.review.application.port.out.ReviewCollectionRequestedEvent
 import com.cleanreview.review.domain.model.CollectionRun
 import com.cleanreview.review.domain.model.CollectionRunId
@@ -17,6 +16,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.assertEquals
 import org.junit.jupiter.api.Test
+import org.springframework.context.ApplicationEventPublisher
 
 class RegisterReviewTargetUseCaseTest {
     @Test
@@ -27,7 +27,7 @@ class RegisterReviewTargetUseCaseTest {
         val requestCollectionUseCase = RequestReviewCollectionUseCase(
             reviewTargetRepository = reviewTargetRepository,
             collectionRunRepository = collectionRunRepository,
-            reviewCollectionEventPublisher = eventPublisher,
+              applicationEventPublisher = eventPublisher,
             clock = Clock.fixed(Instant.parse("2026-05-11T12:00:00Z"), ZoneOffset.UTC),
             initialBackfillDays = 30,
             resyncOverlapHours = 1,
@@ -74,6 +74,40 @@ class RegisterReviewTargetUseCaseTest {
             assertEquals(100, event.maxReviews)
         }
     }
+
+    @Test
+    fun `registering the same keyword returns existing target without duplicate collection`() {
+        val reviewTargetRepository = RegisterInMemoryReviewTargetRepository()
+        val collectionRunRepository = RegisterInMemoryCollectionRunRepository()
+        val eventPublisher = RegisterRecordingReviewCollectionEventPublisher()
+        val requestCollectionUseCase = RequestReviewCollectionUseCase(
+            reviewTargetRepository = reviewTargetRepository,
+            collectionRunRepository = collectionRunRepository,
+            applicationEventPublisher = eventPublisher,
+            clock = Clock.fixed(Instant.parse("2026-05-11T12:00:00Z"), ZoneOffset.UTC),
+            initialBackfillDays = 30,
+            resyncOverlapHours = 1,
+            maxReviewsPerSource = 100,
+        )
+        val useCase = RegisterReviewTargetUseCase(
+            reviewTargetRepository = reviewTargetRepository,
+            requestReviewCollectionUseCase = requestCollectionUseCase,
+        )
+        val userId = UUID.randomUUID()
+        val command = RegisterReviewTargetCommand(
+            userId = userId,
+            type = ReviewTargetType.PLACE,
+            keyword = " 성수동 파스타 맛집 ",
+        )
+
+        val first = useCase.execute(command)
+        val second = useCase.execute(command.copy(keyword = "성수동 파스타 맛집"))
+
+        assertEquals(first.id, second.id)
+        assertEquals(1, reviewTargetRepository.findAllByCreatedBy(userId).size)
+        assertEquals(1, collectionRunRepository.findAllByTargetId(first.id).size)
+        assertEquals(1, eventPublisher.published.size)
+    }
 }
 
 private class RegisterInMemoryReviewTargetRepository : ReviewTargetRepository {
@@ -88,6 +122,18 @@ private class RegisterInMemoryReviewTargetRepository : ReviewTargetRepository {
 
     override fun findAllByCreatedBy(userId: UUID): List<ReviewTarget> =
         targets.values.filter { it.createdBy == userId && !it.isDeleted() }
+
+    override fun findActiveByCreatedByAndTypeAndKeyword(
+        userId: UUID,
+        type: com.cleanreview.review.domain.model.ReviewTargetType,
+        keyword: String,
+    ): ReviewTarget? =
+        targets.values.firstOrNull {
+            it.createdBy == userId &&
+                it.type == type &&
+                it.keyword.trim().equals(keyword.trim(), ignoreCase = true) &&
+                !it.isDeleted()
+        }
 
     override fun findAll(): List<ReviewTarget> =
         targets.values.filter { !it.isDeleted() }
@@ -130,10 +176,10 @@ private class RegisterInMemoryCollectionRunRepository : CollectionRunRepository 
         runs.filter { it.targetId == targetId }
 }
 
-private class RegisterRecordingReviewCollectionEventPublisher : ReviewCollectionEventPublisher {
+private class RegisterRecordingReviewCollectionEventPublisher : ApplicationEventPublisher {
     val published = mutableListOf<ReviewCollectionRequestedEvent>()
 
-    override fun publish(event: ReviewCollectionRequestedEvent) {
-        published.add(event)
+    override fun publishEvent(event: Any) {
+        published.add(event as ReviewCollectionRequestedEvent)
     }
 }

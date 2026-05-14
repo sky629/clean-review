@@ -6,5 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface ReviewAnalysisJpaRepository : JpaRepository<ReviewAnalysisJpaEntity, UUID> {
     fun findFirstByReviewIdOrderByAnalyzedAtDesc(reviewId: UUID): ReviewAnalysisJpaEntity?
 
+    fun findAllByReviewIdIn(reviewIds: Collection<UUID>): List<ReviewAnalysisJpaEntity>
+
     fun findAllByOrderByAnalyzedAtDesc(): List<ReviewAnalysisJpaEntity>
 }

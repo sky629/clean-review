@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 from zoneinfo import ZoneInfo
 

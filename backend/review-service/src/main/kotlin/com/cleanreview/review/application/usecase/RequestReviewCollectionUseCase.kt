@@ -1,6 +1,5 @@
 package com.cleanreview.review.application.usecase
 
-import com.cleanreview.review.application.port.out.ReviewCollectionEventPublisher
 import com.cleanreview.review.application.port.out.ReviewCollectionRequestedEvent
 import com.cleanreview.review.domain.model.CollectionRun
 import com.cleanreview.review.domain.model.CollectionRunId
@@ -15,6 +14,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional
 class RequestReviewCollectionUseCase(
     private val reviewTargetRepository: ReviewTargetRepository,
     private val collectionRunRepository: CollectionRunRepository,
-    private val reviewCollectionEventPublisher: ReviewCollectionEventPublisher,
+    private val applicationEventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
     @Value("\${clean-review.collection.initial-backfill-days:30}")
     private val initialBackfillDays: Long,
@@ -91,8 +91,9 @@ class RequestReviewCollectionUseCase(
             ),
         )
 
-        reviewCollectionEventPublisher.publish(
+        applicationEventPublisher.publishEvent(
             ReviewCollectionRequestedEvent(
+                idempotencyKey = collectionRun.idempotencyKey,
                 collectionRunId = collectionRun.id.value.toString(),
                 targetId = target.id.value.toString(),
                 source = collectionRun.source,

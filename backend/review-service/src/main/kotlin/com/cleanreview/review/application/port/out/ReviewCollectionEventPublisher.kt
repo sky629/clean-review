@@ -2,6 +2,7 @@ package com.cleanreview.review.application.port.out
 
 data class ReviewCollectionRequestedEvent(
     val eventType: String = "review.collection.requested.v1",
+    val idempotencyKey: String,
     val collectionRunId: String,
     val targetId: String,
     val source: String,

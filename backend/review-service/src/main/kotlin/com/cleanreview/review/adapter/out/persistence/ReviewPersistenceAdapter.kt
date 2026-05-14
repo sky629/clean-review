@@ -12,7 +12,15 @@ class ReviewPersistenceAdapter(
 ) : ReviewRepository {
     override fun findAllByTargetId(targetId: ReviewTargetId): List<Review> =
         reviewJpaRepository.findAllByTargetIdOrderByCollectedAtDesc(targetId.value)
-            .map { review ->
-                review.toDomain(reviewAnalysisJpaRepository.findFirstByReviewIdOrderByAnalyzedAtDesc(review.id))
+            .let { reviews ->
+                if (reviews.isEmpty()) {
+                    return@let emptyList()
+                }
+                val latestAnalysisByReviewId = reviewAnalysisJpaRepository
+                    .findAllByReviewIdIn(reviews.map { it.id })
+                    .groupBy { it.reviewId }
+                    .mapValues { (_, analyses) -> analyses.maxBy { it.analyzedAt } }
+
+                reviews.map { review -> review.toDomain(latestAnalysisByReviewId[review.id]) }
             }
-}
+  }
